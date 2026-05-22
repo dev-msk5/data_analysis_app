@@ -16,7 +16,7 @@ class DataLoader:
     """Simple dataset loader and lightweight helpers.
 
     This class contains convenience methods for loading data from disk
-    into pandas.DataFrame objects and for getting quick previews and
+    into pandas. DataFrame objects and for getting quick previews and
     summary information about a loaded DataFrame.
     """
 
@@ -28,7 +28,7 @@ class DataLoader:
         """
         pass
 
-    def load_data(self, file_path: str | Path, np: bool = False) -> pd.DataFrame:
+    def load_data(self, file_path: str | Path | object, np: bool = False) -> pd.DataFrame:
         """Load a dataset from `file_path` into a DataFrame.
 
         Supported formats are inferred from the file suffix:
@@ -47,6 +47,35 @@ class DataLoader:
         - FileNotFoundError: If `file_path` does not exist.
         - ValueError: If the file suffix is not a supported/recognized type.
         """
+        # Support both path-like inputs and file-like/uploaded objects
+        # File-like objects (such as Streamlit uploaded files) are detected
+        # by the presence of a `.read` attribute and an optional `.name`.
+        if hasattr(file_path, "read"):
+            # Do not attempt to check filesystem existence for file-like objects.
+            suffix = Path(getattr(file_path, "name", "")).suffix.lower()
+            if suffix == ".csv":
+                print(
+                    f"Loading file-like object: {getattr(file_path, 'name', '<uploaded>')}")
+                return pd.read_csv(file_path)
+            elif suffix in (".xls", ".xlsx"):
+                print(
+                    f"Loading file-like object: {getattr(file_path, 'name', '<uploaded>')}")
+                try:
+                    engine = "xlrd" if suffix == ".xls" else "openpyxl"
+                    return pd.read_excel(file_path, engine=engine)
+                except ImportError as exc:
+                    required = "xlrd" if suffix == ".xls" else "openpyxl"
+                    raise ImportError(
+                        f"Missing optional dependency '{required}'. Install it to read {suffix} files."
+                    ) from exc
+            elif suffix == ".json":
+                print(
+                    f"Loading file-like object: {getattr(file_path, 'name', '<uploaded>')}")
+                return pd.read_json(file_path)
+            else:
+                raise ValueError(f"Unsupported file type: {suffix}")
+
+        # Otherwise treat as a filesystem path (str or Path)
         path = Path(file_path)
 
         if not path.exists():

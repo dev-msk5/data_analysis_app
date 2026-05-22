@@ -1,0 +1,11 @@
+[theme]
+base="dark"
+
+# General colors
+textColor = "#ffffff"
+primaryColor = "#d47a7a"
+secondaryBackgroundColor = "#227042"
+
+# Widgets
+showWidgetBorder = true
+borderColor = "#a3f439"
