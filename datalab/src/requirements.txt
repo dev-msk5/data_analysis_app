@@ -1,2 +1,5 @@
 pandas
-PyQt6
+numpy
+openpyxl
+xlrd
+streamlit

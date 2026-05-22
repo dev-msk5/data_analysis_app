@@ -58,7 +58,15 @@ class DataLoader:
             return pd.read_csv(file_path)
         elif suffix in (".xls", ".xlsx"):
             print(f"Loading file: {file_path}")
-            return pd.read_excel(file_path)
+            try:
+                if suffix == ".xls":
+                    return pd.read_excel(file_path, engine="xlrd")
+                return pd.read_excel(file_path, engine="openpyxl")
+            except ImportError as exc:
+                required = "xlrd" if suffix == ".xls" else "openpyxl"
+                raise ImportError(
+                    f"Missing optional dependency '{required}'. Install it to read {suffix} files."
+                ) from exc
         elif suffix == ".json":
             print(f"Loading file: {file_path}")
             return pd.read_json(file_path)
