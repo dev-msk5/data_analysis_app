@@ -45,7 +45,7 @@ datalab/
 ## Main Pages
 
 - **Home**: shows the active dataset summary and preview
-- **Data Visualization**: placeholder page for charts and plots
+- **Data Visualization**: Displays descriptive data analytics, custom data plotting
 - **Data Cleaning**: placeholder page for cleaning actions
 - **ML Lab**: asks questions about the task and data, then suggests three model options
 
@@ -55,6 +55,20 @@ datalab/
 2. The dataset is stored in `st.session_state.dataset_controller`.
 3. The Home page displays the current shape, column list, missing values, and preview.
 4. The ML Lab page reads the same dataset state to auto-fill size-related questions when data is already available.
+
+## What I've learned
+
+- From the basic Streamlit to some advanced features
+- Designing a webpage and a backend behind
+- Efficient Github Copilot usage than my previous project, this sped up the development by about 250%
+- How to avoid Vibe Coding, by using Copilot to fill my knowledge gap, not solve my problems
+
+## How AI was used
+
+- For the initial stages of planning and featuees
+- For repetitive task, such as Selectbox options, or implementing a menu pattern several times
+- Potentional flawed / redundant code checks, debugging
+- Along the development, any quick questions about Streamlit
 
 ## How to Run
 
@@ -74,6 +88,6 @@ pip install -r requirements.txt
 
 ## Notes
 
-- The current visualization and cleaning pages are still minimal.
+- The current cleaning page is still minimal.
 - The ML Lab recommendation logic is rule-based and uses form answers plus dataset size hints.
 - The app currently focuses on local file loading and interactive exploration rather than a full production pipeline.
