@@ -47,10 +47,10 @@ def normalize_column(df: pd.DataFrame, column: str) -> pd.DataFrame:
     """
     df = df.copy()
     col = df[column]
-    try:
-        df[column] = (col - col.min()) / (col.max() - col.min())
-    except ZeroDivisionError:
-        return "Col.max-col.min is zero"
+    denom = col.max() - col.min()
+    if denom == 0 or pd.isna(denom):
+        return df
+    df[column] = (col - col.min()) / denom
     return df
 
 
@@ -70,10 +70,10 @@ def standardize_column(df: pd.DataFrame, column: str) -> pd.DataFrame:
     """
     df = df.copy()
     col = df[column]
-    try:
-        df[column] = (col - col.mean()) / (col.std())
-    except ZeroDivisionError:
-        return "Column std is zero"
+    std = col.std()
+    if std == 0 or pd.isna(std):
+        return df
+    df[column] = (col - col.mean()) / std
     return df
 
 
@@ -109,6 +109,14 @@ def select_rows(df: pd.DataFrame, colums: list[str]) -> pd.DataFrame:
     - pandas.DataFrame: DataFrame containing only the requested columns.
     """
     return df[colums]
+
+
+def select_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    """Correctly named alias for selecting columns.
+
+    Keeps backward compatibility with `select_rows(..., colums=...)` callers.
+    """
+    return df[columns]
 
 
 def add_column(df: pd.DataFrame, column_name: str, data) -> pd.DataFrame:

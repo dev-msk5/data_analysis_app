@@ -3,3 +3,4 @@ numpy
 openpyxl
 xlrd
 streamlit
+torch

@@ -8,8 +8,11 @@ Note: `file_path` parameters accept either a string path or a
 `pathlib.Path`-like object.
 """
 
+import logging
 import pandas as pd
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class DataLoader:
@@ -54,12 +57,16 @@ class DataLoader:
             # Do not attempt to check filesystem existence for file-like objects.
             suffix = Path(getattr(file_path, "name", "")).suffix.lower()
             if suffix == ".csv":
-                print(
-                    f"Loading file-like object: {getattr(file_path, 'name', '<uploaded>')}")
+                logger.info(
+                    "Loading file-like object: %s",
+                    getattr(file_path, "name", "<uploaded>"),
+                )
                 return pd.read_csv(file_path)
             elif suffix in (".xls", ".xlsx"):
-                print(
-                    f"Loading file-like object: {getattr(file_path, 'name', '<uploaded>')}")
+                logger.info(
+                    "Loading file-like object: %s",
+                    getattr(file_path, "name", "<uploaded>"),
+                )
                 try:
                     engine = "xlrd" if suffix == ".xls" else "openpyxl"
                     return pd.read_excel(file_path, engine=engine)
@@ -69,8 +76,10 @@ class DataLoader:
                         f"Missing optional dependency '{required}'. Install it to read {suffix} files."
                     ) from exc
             elif suffix == ".json":
-                print(
-                    f"Loading file-like object: {getattr(file_path, 'name', '<uploaded>')}")
+                logger.info(
+                    "Loading file-like object: %s",
+                    getattr(file_path, "name", "<uploaded>"),
+                )
                 return pd.read_json(file_path)
             else:
                 raise ValueError(f"Unsupported file type: {suffix}")
@@ -83,10 +92,10 @@ class DataLoader:
 
         suffix = path.suffix.lower()
         if suffix == ".csv":
-            print(f"Loading file: {file_path}")
+            logger.info("Loading file: %s", file_path)
             return pd.read_csv(file_path)
         elif suffix in (".xls", ".xlsx"):
-            print(f"Loading file: {file_path}")
+            logger.info("Loading file: %s", file_path)
             try:
                 if suffix == ".xls":
                     return pd.read_excel(file_path, engine="xlrd")
@@ -97,7 +106,7 @@ class DataLoader:
                     f"Missing optional dependency '{required}'. Install it to read {suffix} files."
                 ) from exc
         elif suffix == ".json":
-            print(f"Loading file: {file_path}")
+            logger.info("Loading file: %s", file_path)
             return pd.read_json(file_path)
         else:
             raise ValueError(f"Unsupported file type: {suffix}")

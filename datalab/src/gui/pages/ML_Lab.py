@@ -1,9 +1,36 @@
 import streamlit as st
 
+from gui.session_helpers import get_active_dataframe
+# import torch
 
-form_specifics = {
+DEFAULT_FORM_SPECIFICS = {}
 
-}
+MODEL_OPTIONS = [
+    "ARIMA",
+    "Balanced Random Forest",
+    "CatBoost",
+    "CatBoost Regressor",
+    "ElasticNet",
+    "Explainable Boosting Machine",
+    "General tabular classification",
+    "General tabular regression",
+    "LightGBM",
+    "LightGBM Regressor",
+    "Lasso Regression",
+    "Linear SVM",
+    "Logistic Regression",
+    "Logistic Regression (class-weighted)",
+    "Prophet",
+    "Random Forest",
+    "Random Forest Regressor",
+    "Ridge Regression",
+    "SARIMA",
+    "SGD Regressor",
+    "XGBoost",
+    "XGBoost (class-weighted)",
+    "XGBoost Regressor",
+    "XGBoost with lag features",
+]
 
 
 def _get_dataset_shape_from_session() -> tuple[int, int] | None:
@@ -12,13 +39,8 @@ def _get_dataset_shape_from_session() -> tuple[int, int] | None:
     Returns
     - tuple[int, int] | None: (rows, columns) if a dataset exists, otherwise None.
     """
-    controller = st.session_state.get("dataset_controller")
-    if controller is None or getattr(controller, "original_df", None) is None:
-        return None
-
-    try:
-        dataframe = controller.get_data()
-    except Exception:
+    dataframe = get_active_dataframe()
+    if dataframe is None:
         return None
 
     return int(dataframe.shape[0]), int(dataframe.shape[1])
@@ -120,106 +142,154 @@ def ml_page() -> None:
     st.title("ML Lab")
     st.write("Describe your ML setup and get a focused shortlist of models.")
 
-    dataset_shape = _get_dataset_shape_from_session()
-    has_uploaded_data = dataset_shape is not None
+    ml_advisor, ml_explorer = st.tabs(["Model Advisor", "Model Explorer"])
 
-    if has_uploaded_data:
-        n_rows, n_cols = dataset_shape
-        st.success(
-            f"Dataset detected from Home page: {n_rows:,} rows, {n_cols:,} columns. "
-            "Some sizing questions are auto-filled."
-        )
-    else:
-        st.info(
-            "No uploaded dataset found in session. Please answer the data-size questions manually.")
-
-    with st.form(key="models_form"):
-        st.subheader("Enter the specifics of your data and task")
-
-        form_specifics["task_type"] = st.selectbox(
-            "What is your primary ML task?",
-            ["Numerical (Regression)", "Categorical (Classification)",
-             "Time series forecasting"],
-        )
-
-        form_specifics["optimization_goal"] = st.selectbox(
-            "What matters most?",
-            ["Best accuracy", "Fast training", "Fast inference", "Interpretability"],
-        )
-
-        form_specifics["interpretability_need"] = st.selectbox(
-            "How much interpretability do you need?",
-            ["High", "Medium", "Low"],
-        )
-
-        form_specifics["data_noise"] = st.selectbox(
-            "How noisy/outlier-heavy is the data?",
-            ["Low", "Medium", "High", "Not sure"],
-        )
+    with ml_advisor:
+        dataset_shape = _get_dataset_shape_from_session()
+        has_uploaded_data = dataset_shape is not None
 
         if has_uploaded_data:
-            form_specifics["sample_size"] = _bucket_sample_size(n_rows)
-            form_specifics["feature_count"] = _bucket_feature_count(n_cols)
-            st.caption(f"Sample size (auto): {form_specifics['sample_size']}")
-            st.caption(
-                f"Feature count (auto): {form_specifics['feature_count']}")
+            n_rows, n_cols = dataset_shape
+            st.success(
+                f"Dataset detected from Home page: {n_rows:,} rows, {n_cols:,} columns. "
+                "Some sizing questions are auto-filled."
+            )
         else:
-            form_specifics["sample_size"] = st.selectbox(
-                "What is the estimated size of your training data?",
-                [
-                    "Small (<10,000 rows)",
-                    "Medium (10,000 - 1,000,000 rows)",
-                    "Large (>1,000,000 rows)",
-                ],
-            )
-            form_specifics["feature_count"] = st.selectbox(
-                "How many input features do you expect?",
-                ["Low (<30 features)", "Medium (30-150 features)",
-                 "High (>150 features)"],
-            )
+            st.info(
+                "No uploaded dataset found in session. Please answer the data-size questions manually.")
 
-        form_specifics["class_balance"] = None
-        if form_specifics["task_type"] == "Categorical (Classification)":
-            form_specifics["class_balance"] = st.selectbox(
-                "How balanced are your classes?",
-                ["Balanced", "Mild imbalance", "Strong imbalance", "Not sure"],
+        with st.form(key="models_form"):
+            st.subheader("Enter the specifics of your data and task")
+            form_specifics = st.session_state.setdefault(
+                "ml_form_specifics", DEFAULT_FORM_SPECIFICS.copy())
+
+            form_specifics["task_type"] = st.selectbox(
+                "What is your primary ML task?",
+                ["Numerical (Regression)", "Categorical (Classification)",
+                 "Time series forecasting"],
             )
 
-        form_specifics["time_signal"] = None
-        if form_specifics["task_type"] == "Time series forecasting":
-            form_specifics["time_signal"] = st.selectbox(
-                "What kind of temporal signal do you expect?",
-                ["Clear seasonality", "Trend only", "Unclear / noisy"],
+            form_specifics["optimization_goal"] = st.selectbox(
+                "What matters most?",
+                ["Best accuracy", "Fast training",
+                    "Fast inference", "Interpretability"],
             )
 
-        submit_button = st.form_submit_button(label="Calculate best model")
+            form_specifics["interpretability_need"] = st.selectbox(
+                "How much interpretability do you need?",
+                ["High", "Medium", "Low"],
+            )
 
-    if not submit_button:
-        return
+            form_specifics["data_noise"] = st.selectbox(
+                "How noisy/outlier-heavy is the data?",
+                ["Low", "Medium", "High", "Not sure"],
+            )
 
-    required_keys = _required_keys_for_task(
-        form_specifics["task_type"],
-        has_uploaded_data,
-    )
+            if has_uploaded_data:
+                form_specifics["sample_size"] = _bucket_sample_size(n_rows)
+                form_specifics["feature_count"] = _bucket_feature_count(n_cols)
+                st.caption(
+                    f"Sample size (auto): {form_specifics['sample_size']}")
+                st.caption(
+                    f"Feature count (auto): {form_specifics['feature_count']}")
+            else:
+                form_specifics["sample_size"] = st.selectbox(
+                    "What is the estimated size of your training data?",
+                    [
+                        "Small (<10,000 rows)",
+                        "Medium (10,000 - 1,000,000 rows)",
+                        "Large (>1,000,000 rows)",
+                    ],
+                )
+                form_specifics["feature_count"] = st.selectbox(
+                    "How many input features do you expect?",
+                    ["Low (<30 features)", "Medium (30-150 features)",
+                     "High (>150 features)"],
+                )
 
-    if not _is_form_specifics_complete(form_specifics, required_keys):
-        st.error(
-            "Please complete all required fields before calculating recommendations.")
-        return
+            form_specifics["class_balance"] = None
+            if form_specifics["task_type"] == "Categorical (Classification)":
+                form_specifics["class_balance"] = st.selectbox(
+                    "How balanced are your classes?",
+                    ["Balanced", "Mild imbalance", "Strong imbalance", "Not sure"],
+                )
 
-    model_group, suggested_models = _recommend_models(
-        task_type=form_specifics["task_type"],
-        optimization_goal=form_specifics["optimization_goal"],
-        interpretability_need=form_specifics["interpretability_need"],
-        sample_size=form_specifics["sample_size"],
-        feature_count=form_specifics["feature_count"],
-        data_noise=form_specifics["data_noise"],
-        class_balance=form_specifics["class_balance"],
-        time_signal=form_specifics["time_signal"],
-    )
+            form_specifics["time_signal"] = None
+            if form_specifics["task_type"] == "Time series forecasting":
+                form_specifics["time_signal"] = st.selectbox(
+                    "What kind of temporal signal do you expect?",
+                    ["Clear seasonality", "Trend only", "Unclear / noisy"],
+                )
 
-    st.subheader("Recommended model shortlist")
-    st.write(f"Model group: **{model_group}**")
-    st.write("Top 3 suggestions:")
-    for idx, model_name in enumerate(suggested_models, start=1):
-        st.write(f"{idx}. {model_name}")
+            submit_button = st.form_submit_button(label="Calculate best model")
+
+        if submit_button:
+            required_keys = _required_keys_for_task(
+                form_specifics["task_type"],
+                has_uploaded_data,
+            )
+
+            if not _is_form_specifics_complete(form_specifics, required_keys):
+                st.error(
+                    "Please complete all required fields before calculating recommendations.")
+            else:
+                model_group, suggested_models = _recommend_models(
+                    task_type=form_specifics["task_type"],
+                    optimization_goal=form_specifics["optimization_goal"],
+                    interpretability_need=form_specifics["interpretability_need"],
+                    sample_size=form_specifics["sample_size"],
+                    feature_count=form_specifics["feature_count"],
+                    data_noise=form_specifics["data_noise"],
+                    class_balance=form_specifics["class_balance"],
+                    time_signal=form_specifics["time_signal"],
+                )
+
+                st.subheader("Recommended model shortlist")
+                st.write(f"Model group: **{model_group}**")
+                st.write("Top 3 suggestions:")
+                for idx, model_name in enumerate(suggested_models, start=1):
+                    st.write(f"{idx}. {model_name}")
+
+    with ml_explorer:
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            m1.metric("F1 score", 1, border=True)
+        with m2:
+            m2.metric("Precision", 1, border=True)
+        with m3:
+            m3.metric("Accuracy", 1, border=True)
+        with m4:
+            m4.metric("AUC", 1, border=True)
+
+        st.divider()
+
+        menu_cols = st.columns([1, 3])
+
+        with menu_cols[0].container(border=True, height="stretch", vertical_alignment="center"):
+            st.markdown("### Algorithm")
+            algorithm = st.selectbox(
+                "",
+                MODEL_OPTIONS,
+                label_visibility="collapsed",
+            )
+
+            st.markdown("### Hyperparameters")
+            n_estimators = st.slider(
+                "n_estimators",
+                min_value=10,
+                max_value=500,
+                value=100,
+                step=10,
+            )
+            max_depth = st.slider(
+                "max_depth",
+                min_value=1,
+                max_value=30,
+                value=12,
+                step=1,
+            )
+
+            st.button("Execute Pipeline")
+
+        with menu_cols[1].container(border=True, height="stretch", vertical_alignment="center"):
+            st.write("Charts and results will go here.")

@@ -80,8 +80,8 @@ class Pipeline:
         """
         for step in self.steps:
             try:
-                print(f"Running step {step} with {step.params}")
-                df = step(df)
+                print(f"Running step {step.name} with {step.params}")
+                df = step.run(df)
             except Exception as e:
                 raise RuntimeError(f"Error in step {step.name}: {e}") from e
         return df

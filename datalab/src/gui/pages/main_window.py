@@ -3,20 +3,14 @@
 import streamlit as st
 
 from core.dataset_controller import DatasetController
-
-
-def _get_controller() -> DatasetController:
-    if "dataset_controller" not in st.session_state:
-        st.session_state.dataset_controller = DatasetController()
-    return st.session_state.dataset_controller
+from gui.session_helpers import get_controller, get_source_name
 
 
 def _render_dataset_summary(controller: DatasetController) -> None:
     dataframe = controller.get_data()
     summary = controller.info()
 
-    source_name = controller.source_name or st.session_state.get(
-        "dataset_label", "Unknown dataset")
+    source_name = get_source_name()
     total_missing = int(sum(summary["missing"].values()))
 
     st.subheader("Current dataset")
@@ -29,7 +23,7 @@ def _render_dataset_summary(controller: DatasetController) -> None:
     metric_columns[3].metric("Named fields", f"{len(summary['columns']):,}")
 
     st.markdown("#### Preview")
-    st.dataframe(controller.preview(8), use_container_width=True)
+    st.dataframe(controller.preview(8), width="stretch")
 
     with st.expander("Dataset details", expanded=False):
         st.write("Columns")
@@ -47,7 +41,7 @@ def run_app() -> None:
         "Use the sidebar to load, replace, or reset data from any page."
     )
 
-    controller = _get_controller()
+    controller = get_controller()
 
     if controller.original_df is None:
         st.info("Load a dataset to see the summary and preview.")
