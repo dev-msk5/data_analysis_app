@@ -1,35 +1,22 @@
 import streamlit as st
 
+import data.ml_models as models
+
+from data.model_registry import MODEL_OPTIONS, MODEL_PARAMETERS
 from gui.session_helpers import get_active_dataframe
-# import torch
 
 DEFAULT_FORM_SPECIFICS = {}
 
-MODEL_OPTIONS = [
-    "ARIMA",
-    "Balanced Random Forest",
-    "CatBoost",
-    "CatBoost Regressor",
-    "ElasticNet",
-    "Explainable Boosting Machine",
-    "General tabular classification",
-    "General tabular regression",
-    "LightGBM",
-    "LightGBM Regressor",
-    "Lasso Regression",
-    "Linear SVM",
-    "Logistic Regression",
-    "Logistic Regression (class-weighted)",
-    "Prophet",
-    "Random Forest",
-    "Random Forest Regressor",
-    "Ridge Regression",
-    "SARIMA",
-    "SGD Regressor",
-    "XGBoost",
-    "XGBoost (class-weighted)",
-    "XGBoost Regressor",
-    "XGBoost with lag features",
+CHART_OPTIONS = [
+    "Bar",
+    "Line",
+    "Area",
+    "Scatter",
+    "Histogram",
+    "Box",
+    "Violin",
+    "Pie",
+    "Heatmap",
 ]
 
 
@@ -82,20 +69,20 @@ def _recommend_models(
         if task_type == "Categorical (Classification)":
             return "Explainable linear", [
                 "Logistic Regression",
+                "Linear Regression",
                 "Linear SVM",
-                "Explainable Boosting Machine",
             ]
-        return "Explainable linear", ["ElasticNet", "Ridge Regression", "Lasso Regression"]
+        return "Explainable linear", ["Linear Regression", "ElasticNet", "Ridge Regression"]
 
     if optimization_goal == "Fast inference" or sample_size == "Large (>1,000,000 rows)":
         if task_type == "Categorical (Classification)":
-            return "Scalable tabular", ["LightGBM", "Logistic Regression", "Linear SVM"]
-        return "Scalable tabular", ["LightGBM", "SGD Regressor", "Ridge Regression"]
+            return "Scalable tabular", ["LightGBM", "Logistic Regression", "Linear Regression"]
+        return "Scalable tabular", ["LightGBM", "Linear Regression", "SGD Regressor"]
 
     if feature_count == "High (>150 features)":
         if task_type == "Categorical (Classification)":
             return "High-dimensional", ["Linear SVM", "Logistic Regression", "LightGBM"]
-        return "High-dimensional", ["ElasticNet", "Ridge Regression", "LightGBM"]
+        return "High-dimensional", ["Linear Regression", "ElasticNet", "Ridge Regression"]
 
     if task_type == "Categorical (Classification)" and class_balance == "Strong imbalance":
         return "Imbalanced classification", [
@@ -106,12 +93,12 @@ def _recommend_models(
 
     if data_noise in ("Medium", "High"):
         if task_type == "Categorical (Classification)":
-            return "Robust tree ensemble", ["Random Forest", "XGBoost", "CatBoost"]
-        return "Robust tree ensemble", ["Random Forest Regressor", "XGBoost Regressor", "CatBoost Regressor"]
+            return "Robust tree ensemble", ["Random Forest", "Decision Tree", "XGBoost"]
+        return "Robust tree ensemble", ["Random Forest Regressor", "Decision Tree Regressor", "XGBoost Regressor"]
 
     if task_type == "Categorical (Classification)":
         return "General tabular classification", ["XGBoost", "LightGBM", "Random Forest"]
-    return "General tabular regression", ["XGBoost Regressor", "LightGBM Regressor", "Random Forest Regressor"]
+    return "General tabular regression", ["Linear Regression", "XGBoost Regressor", "LightGBM Regressor"]
 
 
 def _required_keys_for_task(task_type: str, has_uploaded_data: bool) -> list[str]:
@@ -136,6 +123,28 @@ def _required_keys_for_task(task_type: str, has_uploaded_data: bool) -> list[str
 
 def _is_form_specifics_complete(values: dict, required_keys: list[str]) -> bool:
     return all(values.get(key) not in (None, "") for key in required_keys)
+
+
+def _render_model_parameters(model_name: str) -> list[str]:
+    """Render one model chooser and return selections."""
+    model_params = MODEL_PARAMETERS.get(model_name, [])
+    for chooser in model_params:
+        widget_key = f"{model_name}_{chooser['name']}"
+        if chooser["control"] == "slider":
+            st.slider(
+                chooser["name"],
+                min_value=chooser["min"],
+                max_value=chooser["max"],
+                value=chooser["default"],
+                step=chooser["step"],
+                key=widget_key,
+            )
+        elif chooser["control"] == "selectbox":
+            st.selectbox(
+                chooser["name"],
+                chooser["options"],
+                key=widget_key,
+            )
 
 
 def ml_page() -> None:
@@ -268,28 +277,22 @@ def ml_page() -> None:
         with menu_cols[0].container(border=True, height="stretch", vertical_alignment="center"):
             st.markdown("### Algorithm")
             algorithm = st.selectbox(
-                "",
-                MODEL_OPTIONS,
+                "Algorithm",
+                list(MODEL_OPTIONS.keys()),
                 label_visibility="collapsed",
             )
 
-            st.markdown("### Hyperparameters")
-            n_estimators = st.slider(
-                "n_estimators",
-                min_value=10,
-                max_value=500,
-                value=100,
-                step=10,
-            )
-            max_depth = st.slider(
-                "max_depth",
-                min_value=1,
-                max_value=30,
-                value=12,
-                step=1,
-            )
+            st.session_state["algorithm"] = algorithm
+            selected_model = MODEL_OPTIONS[algorithm]
 
-            st.button("Execute Pipeline")
+            st.markdown("### Hyperparameters")
+            _render_model_parameters(algorithm)
+            st.caption(f"Model type: {selected_model.__class__.__name__}")
+
+            execute = st.button("Run Model")
 
         with menu_cols[1].container(border=True, height="stretch", vertical_alignment="center"):
-            st.write("Charts and results will go here.")
+            if execute:
+                models.run_model()
+            else:
+                st.write("Charts and results will go here.")
