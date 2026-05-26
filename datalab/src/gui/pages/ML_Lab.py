@@ -149,7 +149,7 @@ def _render_model_parameters(model_name: str) -> list[str]:
 
 def ml_page() -> None:
     st.title("ML Lab")
-    st.write("Describe your ML setup and get a focused shortlist of models.")
+    st.write("Describe your ML setup and get a focused shortlist of models")
 
     ml_advisor, ml_explorer = st.tabs(["Model Advisor", "Model Explorer"])
 

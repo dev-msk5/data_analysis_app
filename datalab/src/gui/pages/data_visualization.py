@@ -145,7 +145,7 @@ def _render_chart(chart_type: str, df: pd.DataFrame, x_column: str, y_column: st
 
 def data_visualization_page() -> None:
     st.title("Data Visualization")
-    st.write("Data visualization")
+    st.write("Visualize your data with different charts")
 
     df = get_active_dataframe()
     if df is None or df.empty:
